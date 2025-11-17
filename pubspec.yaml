@@ -10,7 +10,8 @@ dependencies:
   path: ^1.9.0
   jaspr: ^0.21.7
   takumi:
-    path: ../takumi
+    git:
+      url: https://github.com/Lexedia/takumi.git
 
 dev_dependencies:
   lints: ^6.0.0
