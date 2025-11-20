@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:jaspr/server.dart';
 // ignore: implementation_imports
 import 'package:jaspr/src/server/child_nodes.dart';
@@ -8,9 +10,8 @@ import 'package:takumi/takumi.dart' hide Style;
 
 const voidElements = {'head', 'meta', 'script', 'link', 'style'};
 
-/// A helper function that converts a [Component] into a [Node].
-Node fromComponent(Component component) {
-  final result = fromComponentInternal(component);
+Future<Node> fromComponent(Component component) async {
+  final result = await fromComponentInternal(component);
 
   if (result.isEmpty) {
     return ContainerNode(rawStyle: {'width': '100%', 'height': '100%'});
@@ -26,7 +27,7 @@ Node fromComponent(Component component) {
   );
 }
 
-List<Node> fromComponentInternal(Component component) {
+FutureOr<List<Node>> fromComponentInternal(Component component) async {
   final binding = ServerAppBinding((
     url: '/',
     headers: Headers.empty(),
@@ -34,6 +35,15 @@ List<Node> fromComponentInternal(Component component) {
 
   binding.initializeOptions(Jaspr.options);
   binding.attachRootComponent(component);
+
+  final rootElement = binding.rootElement;
+  if (rootElement == null) return [];
+
+  if (rootElement.owner.isFirstBuild) {
+    final completer = Completer<Null>.sync();
+    rootElement.binding.addPostFrameCallback(completer.complete);
+    await completer.future;
+  }
 
   final rootElementRenderObject =
       binding.rootElement!.renderObject as MarkupRenderObject;
