@@ -18,14 +18,14 @@ class ImageResponse extends StatelessComponent {
   final Component component;
 
   /// The options for generating the image.
-  final RenderOptions? options;
+  final RenderOptions options;
 
   /// Creates an [ImageResponse] with the given [component] and [options].
-  ImageResponse(this.component, {this.options});
+  ImageResponse(this.component, {this.options = const RenderOptions()});
 
   @override
   Component build(BuildContext ctx) {
-    ctx.setHeader('Content-Type', mimeType(options?.format ?? .webp));
+    ctx.setHeader('Content-Type', mimeType(options.format ?? .webp));
     final renderer = Renderer();
     final bytes = renderer.renderSync(fromComponent(component), options);
     renderer.dispose();

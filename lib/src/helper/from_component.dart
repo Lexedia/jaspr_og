@@ -1,5 +1,9 @@
+import 'package:jaspr/server.dart';
+// ignore: implementation_imports
+import 'package:jaspr/src/server/child_nodes.dart';
 import 'package:jaspr_og/src/helper/presets.dart';
-import 'package:jaspr/jaspr.dart';
+// ignore: implementation_imports
+import 'package:shelf/src/headers.dart';
 import 'package:takumi/takumi.dart' hide Style;
 
 const voidElements = {'head', 'meta', 'script', 'link', 'style'};
@@ -9,7 +13,7 @@ Node fromComponent(Component component) {
   final result = fromComponentInternal(component);
 
   if (result.isEmpty) {
-    return ContainerNode();
+    return ContainerNode(rawStyle: {'width': '100%', 'height': '100%'});
   }
 
   if (result.length == 1) {
@@ -23,111 +27,84 @@ Node fromComponent(Component component) {
 }
 
 List<Node> fromComponentInternal(Component component) {
-  assert(
-    component is Fragment ||
-        component is Text ||
-        component is DomComponent ||
-        component is StatelessComponent,
-    'Cannot collect from anything but Fragment|DomComponent|Text|StatelessComponent',
-  );
+  final binding = ServerAppBinding((
+    url: '/',
+    headers: Headers.empty(),
+  ), loadFile: (_) => Future.value(null));
 
-  return processComponent(component);
+  binding.initializeOptions(Jaspr.options);
+  binding.attachRootComponent(component);
+
+  final rootElementRenderObject =
+      binding.rootElement!.renderObject as MarkupRenderObject;
+
+  return processComponent(rootElementRenderObject);
 }
 
-List<Node> fromChildren(List<Component> component) => component
-    .map((component) => fromComponentInternal(component))
+List<Node> fromChildren(ChildList component) => component
+    .map((component) => processComponent(component))
     .expand((e) => e)
     .toList();
 
-List<Node> processComponent(Component component) {
-  if (component is Text) {
-    return [TextNode(component.text, rawStyle: stylePresets['span'])];
+List<Node> processComponent(MarkupRenderObject renderObject) {
+  if (renderObject is MarkupRenderText) {
+    return [TextNode(renderObject.text, rawStyle: stylePresets['span']!)];
   }
 
-  if (component is Fragment) {
-    return fromChildren(component.children);
+  if (renderObject is MarkupRenderFragment) {
+    return fromChildren(renderObject.children);
   }
 
-  if (component is StatelessComponent) {
-    // im not too sure about this tbh
-    final el = component.createElement();
-    // ignore: invalid_use_of_protected_member
-    return processComponent(component.build(el));
-  }
+  if (renderObject is MarkupRenderElement) {
+    final tag = renderObject.tag;
 
-  final type = (component as DomComponent).tag;
+    if (voidElements.contains(tag)) {
+      return [];
+    }
 
-  if (voidElements.contains(type)) {
-    return [];
-  }
+    switch (tag) {
+      case 'br':
+        return [
+          TextNode(
+            '\n',
+            rawStyle: stylePresets['span']!,
+            tw: renderObject.classes,
+          ),
+        ];
+      case 'img':
+        return [createImageElement(renderObject)];
+      case 'svg':
+        return [createSvgElement(renderObject)];
+    }
 
-  if (isHtmlElement(component, 'br')) {
+    final style = extractStyle(renderObject);
+
+    if (renderObject.children.isEmpty) {
+      return [];
+    }
+
+    final children = fromChildren(renderObject.children);
+
     return [
-      TextNode('\n', rawStyle: stylePresets['span'], tw: component.classes),
+      ContainerNode(
+        children: children,
+        rawStyle: style,
+        tw: renderObject.classes,
+      ),
     ];
   }
 
-  if (isHtmlElement(component, 'img')) {
-    return [createImageElement(component)];
-  }
+  return fromChildren(renderObject.children);
+}
 
-  if (isHtmlElement(component, 'svg')) {
-    return [createSvgElement(component)];
-  }
-
+ImageNode createSvgElement(MarkupRenderElement component) {
   final style = extractStyle(component);
-
-  if (component.children == null) {
-    return [];
-  }
-
-  final children = fromChildren(component.children!);
-
-  return [
-    ContainerNode(children: children, rawStyle: style, tw: component.classes),
-  ];
-}
-
-
-bool isHtmlElement(DomComponent component, String tag) => component.tag == tag;
-
-List<String> attrsToAttrsString(Map<String, String> attrs) {
-  final c = {...attrs};
-  c.remove('class');
-  return c.entries.map((e) => '${e.key}="${e.value}"').toList();
-}
-
-String serialise(Map<String, String> attrs, DomComponent component) {
-  final serialisedAttrs = attrsToAttrsString(attrs);
-  final childrenString = component.children?.map(
-    (c) {
-      final child = c as DomComponent;
-      return serialise(child.attributes!, child);
-    },
-  ).join('');
-  return '<${component.tag}${serialisedAttrs.isNotEmpty ? ' ${serialisedAttrs.join(' ')}' : ''}>${childrenString ?? ''}</${component.tag}>';
-}
-
-String serialiseSvg(DomComponent component) {
-  final attrs = component.attributes!;
-
-  if (!attrs.containsKey('xmlns')) {
-    final cloned = {...attrs, 'xmlns': 'http://www.w3.org/2000/svg'};
-
-    return serialise(cloned, component);
-  }
-
-  return serialise(attrs, component);
-}
-
-ImageNode createSvgElement(DomComponent component) {
-  final style = extractStyle(component);
-  final svg = serialiseSvg(component);
+  final svg = component.renderToHtml();
 
   return ImageNode(svg, rawStyle: style, tw: component.classes);
 }
 
-ImageNode createImageElement(DomComponent component) {
+ImageNode createImageElement(MarkupRenderElement component) {
   if (component.attributes?.containsKey('src') == false) {
     throw Exception('Image element must have a `src` attribute');
   }
@@ -141,14 +118,14 @@ ImageNode createImageElement(DomComponent component) {
   );
 }
 
-Map<String, String>? extractStyle(DomComponent component) {
+Map<String, String>? extractStyle(MarkupRenderElement component) {
   final styles = component.styles;
   if (styles == null) {
     return null;
   }
   var base = <String, String>{};
   final camelisedStyles = Map.fromEntries(
-    component.styles!.properties.entries.map(
+    component.styles!.entries.map(
       (e) => MapEntry(kebabToCamel(e.key), e.value),
     ),
   );
@@ -161,11 +138,14 @@ Map<String, String>? extractStyle(DomComponent component) {
 }
 
 String kebabToCamel(String kebab) {
-  return kebab.split('-').map((word) {
-    if (word == kebab.split('-').first) {
-      return word;
-    } else {
-      return word[0].toUpperCase() + word.substring(1);
-    }
-  }).join('');
+  return kebab
+      .split('-')
+      .map((word) {
+        if (word == kebab.split('-').first) {
+          return word;
+        } else {
+          return word[0].toUpperCase() + word.substring(1);
+        }
+      })
+      .join('');
 }
