@@ -14,7 +14,7 @@ Future<Node> fromComponent(Component component) async {
   final result = await fromComponentInternal(component);
 
   if (result.isEmpty) {
-    return ContainerNode(rawStyle: {'width': '100%', 'height': '100%'});
+    return ContainerNode();
   }
 
   if (result.length == 1) {
