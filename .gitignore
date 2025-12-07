@@ -4,3 +4,4 @@
 build/**
 .vscode/
 pubspec.lock
+__tmp__/
