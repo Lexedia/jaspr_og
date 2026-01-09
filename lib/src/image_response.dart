@@ -1,4 +1,5 @@
 import 'package:jaspr/server.dart';
+import 'package:jaspr/dom.dart';
 import 'package:jaspr_og/src/helper/from_component.dart';
 import 'package:takumi/takumi.dart';
 
@@ -7,7 +8,6 @@ part './helper/sentinel_component.dart';
 String mimeType(OutputFormat format) => switch (format) {
   .png => 'image/png',
   .webp => 'image/webp',
-  .avif => 'image/avif',
   .jpeg => 'image/jpeg',
   .raw => throw UnsupportedError('raw format isnt in this context'),
 };
