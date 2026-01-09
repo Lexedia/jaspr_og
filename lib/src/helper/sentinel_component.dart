@@ -5,14 +5,16 @@ class _SentinelComponent implements Component {
 
   @override
   Element createElement() {
-    throw UnimplementedError(
-      'Tried to invoke the inner component of ImageResponse()\n'
-      'This should not occur in normal circumstances.',
-    );
+    return span([
+      text(
+        'Tried to invoke the inner component of ImageResponse()\n'
+        'This should not occur in normal circumstances.',
+      ),
+    ]).createElement();
   }
 
   @override
-  Key? get key => throw UnimplementedError();
+  Key? get key => null;
 }
 
 const _sentinelComponent = _SentinelComponent();
