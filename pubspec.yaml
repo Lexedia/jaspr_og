@@ -22,5 +22,5 @@ dependency_overrides:
   jaspr:
     git:
       url: https://github.com/schultek/jaspr.git
-      ref: next
+      ref: main
       path: packages/jaspr
