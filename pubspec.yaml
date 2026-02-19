@@ -1,14 +1,15 @@
 name: jaspr_og
 description: A library that can generate opengraph images based on jaspr components.
-version: 0.0.1-dev.1
+version: 0.0.1-dev.2
 repository: https://github.com/Lexedia/jaspr_og
+publish_to: https://pub.lexedia.moe
 
 environment:
   sdk: ^3.10.0
 
 dependencies:
   path: ^1.9.0
-  jaspr: ^0.21.7
+  jaspr: ^0.22.3
   takumi:
     git:
       url: https://github.com/Lexedia/takumi.git
@@ -17,10 +18,3 @@ dependencies:
 dev_dependencies:
   lints: ^6.0.0
   test: ^1.25.6
-
-dependency_overrides:
-  jaspr:
-    git:
-      url: https://github.com/schultek/jaspr.git
-      ref: main
-      path: packages/jaspr

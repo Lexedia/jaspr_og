@@ -6,7 +6,7 @@ class _SentinelComponent implements Component {
   @override
   Element createElement() {
     return span([
-      text(
+      .text(
         'Tried to invoke the inner component of ImageResponse()\n'
         'This should not occur in normal circumstances.',
       ),
