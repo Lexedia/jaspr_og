@@ -1,3 +1,6 @@
+## 0.0.1-dev.4
+- Bump takumi
+
 ## 0.0.1-dev.3
 - Use hosted takumi package.
 
